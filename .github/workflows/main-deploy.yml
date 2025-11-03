@@ -19,7 +19,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-          
+      
+      - name: Restore dependencies
+        run: dotnet restore AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj
+        
       - name: Build with dotnet
         run: dotnet build AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj --configuration Release
         
