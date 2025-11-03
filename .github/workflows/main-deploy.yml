@@ -77,6 +77,7 @@ jobs:
         env:
           CustomerConnectionString: ${{ secrets.CustomerConnectionString }}
         run: |
+          echo "Conteúdo do Secret (CUIDADO!): ${CustomerConnectionString}"
           dotnet tool install --global dotnet-ef
           dotnet ef database update `
             --project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
