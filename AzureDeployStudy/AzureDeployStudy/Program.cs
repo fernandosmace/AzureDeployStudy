@@ -14,8 +14,32 @@ namespace AzureDeployStudy
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            var keyVaultEndpoint = new Uri(builder.Configuration["CustomerConnectionString"]);
-            builder.Configuration.AddAzureKeyVault(keyVaultEndpoint, new DefaultAzureCredential());
+            string? keyVaultUri = builder.Configuration["KeyVaultUri"];
+
+            if (!string.IsNullOrEmpty(keyVaultUri) && Uri.TryCreate(keyVaultUri, UriKind.Absolute, out var keyVaultEndpoint))
+            {
+                // Este código SÓ SERÁ EXECUTADO se o KeyVaultUri for encontrado
+                // (no appsettings.json, variáveis de ambiente, etc.) E for uma URI válida.
+
+                // Em ambientes de desenvolvimento/CI, você pode adicionar uma checagem de ambiente 
+                // para evitar erros de DefaultAzureCredential, mas essa checagem já deve ajudar.
+
+                Console.WriteLine($"Key Vault URI found. Loading secrets from: {keyVaultUri}");
+
+                try
+                {
+                    builder.Configuration.AddAzureKeyVault(keyVaultEndpoint, new DefaultAzureCredential());
+                }
+                catch (Exception ex)
+                {
+                    // Capturar falhas de autenticação (comum em CI/CD ou local)
+                    Console.WriteLine($"ERRO ao carregar Key Vault. Continuando sem secrets. Erro: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Key Vault URI not found or invalid. Skipping Azure Key Vault configuration.");
+            }
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
@@ -33,8 +57,9 @@ namespace AzureDeployStudy
                 })
                 .AddIdentityCookies();
 
+            var connectionString = Environment.GetEnvironmentVariable("CustomerConnectionString");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(builder.Configuration["CustomerDbCon"]));
+                options.UseSqlServer(connectionString));
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
             builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
