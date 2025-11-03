@@ -57,41 +57,16 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D1E09C505E844D18A8FD642D5C025B0D }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3C35CECCC1374260BC88DFC545809F22 }}
 
-      - name: Get Runner IP
-        id: get-runner-ip
-        run: |
-          $RUNNER_IP = Invoke-RestMethod -Uri https://api.ipify.org
-          echo "RUNNER_IP=$RUNNER_IP" >> $env:GITHUB_ENV
-          echo "FIREWALL_RULE_NAME=github-action-runner-rule" >> $env:GITHUB_ENV
-
-      - name: Add Runner IP to SQL Firewall
-        run: |
-          az sql server firewall-rule create `
-            --resource-group "app-service-new" `
-            --server "app-service-server" `
-            --name "${env:FIREWALL_RULE_NAME}" `
-            --start-ip-address "${env:RUNNER_IP}" `
-            --end-ip-address "${env:RUNNER_IP}"
-
       - name: Run .NET EF Migrations
         env:
           CustomerConnectionString: ${{ secrets.CustomerConnectionString }}
         run: |
           dotnet tool install --global dotnet-ef
-          setx PATH "%PATH%;%USERPROFILE%\.dotnet\tools"
           dotnet ef database update `
             --project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
             --startup-project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
             --connection "${{ secrets.CustomerConnectionString }}"
-
-      - name: Remove Runner IP from SQL Firewall
-        if: always()
-        run: |
-          az sql server firewall-rule delete `
-            --resource-group "app-service-new" `
-            --server "app-service-server" `
-            --name "${env:FIREWALL_RULE_NAME}"
-
+            
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
