@@ -58,8 +58,14 @@ jobs:
       # 🆕 PASSO: Executar Migrations do EF Core (ANTES do deploy do app)
       - name: Run .NET EF Migrations
         run: |
+          # 1. Instala a ferramenta EF Core (já estava correto)
           dotnet tool install --global dotnet-ef
-          dotnet ef database update --project . --startup-project . --connection "${{ secrets.CustomerConnectionString }}"
+          
+          # 2. Executa o Database Update
+          dotnet ef database update `
+          --project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
+          --startup-project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
+          --connection "${{ secrets.CustomerConnectionString }}"
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.CustomerConnectionString }}
 
