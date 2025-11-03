@@ -56,8 +56,30 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_583D5389BD184876958E6DF72946465E }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D1E09C505E844D18A8FD642D5C025B0D }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3C35CECCC1374260BC88DFC545809F22 }}
+    
+      # 1. PASSO NOVO: Obter o IP do Runner
+      - name: Get Runner IP
+        id: get-runner-ip
+        run: |
+          # Usa um serviço externo para obter o IP público do runner
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "Runner IP: $RUNNER_IP"
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          echo "FIREWALL_RULE_NAME=github-action-runner-rule" >> $GITHUB_ENV
 
-      # 🆕 PASSO: Executar Migrations do EF Core (ANTES do deploy do app)
+      # 2. PASSO NOVO: Adicionar o IP ao Firewall do Azure SQL
+      - name: Add Runner IP to SQL Firewall
+        run: |
+          az sql server firewall-rule create \
+            --resource-group "app-service-new" \
+            --server "app-service-server" \
+            --name "${{ env.FIREWALL_RULE_NAME }}" \
+            --start-ip-address "${{ env.RUNNER_IP }}" \
+            --end-ip-address "${{ env.RUNNER_IP }}"
+        env:
+          AZURE_SUBSCRIPTION: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3C35CECCC1374260BC88DFC545809F22 }}
+
+      # 3 PASSO: Executar Migrations do EF Core (ANTES do deploy do app)
       - name: Run .NET EF Migrations
         env:
           CustomerConnectionString: ${{ secrets.CustomerConnectionString }}
@@ -70,6 +92,17 @@ jobs:
           --project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
           --startup-project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
           --connection "${{ secrets.CustomerConnectionString }}"
+      
+      # 4. PASSO NOVO: Remover o IP do Firewall (MUITO IMPORTANTE POR SEGURANÇA)
+      - name: Remove Runner IP from SQL Firewall
+        if: always() # Garante que rode mesmo que a migration falhe
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "app-service-new" \
+            --server "app-service-server" \
+            --name "${{ env.FIREWALL_RULE_NAME }}"
+        env:
+          AZURE_SUBSCRIPTION: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3C35CECCC1374260BC88DFC545809F22 }} # Use a sua secret
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
