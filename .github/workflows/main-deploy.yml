@@ -81,7 +81,7 @@ jobs:
           dotnet ef database update `
             --project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
             --startup-project AzureDeployStudy/AzureDeployStudy/AzureDeployStudy.csproj `
-            --connection "${{ secrets.CustomerConnectionString }}"
+            --connection "${{ env.CustomerConnectionString }}"
 
       - name: Remove Runner IP from SQL Firewall
         if: always()
